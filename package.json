@@ -18,5 +18,8 @@
   },
   "volta": {
     "node": "20.19.0"
+  },
+  "dependencies": {
+    "vue": "3.4.23"
   }
 }
