@@ -78,6 +78,7 @@ function cleanDepEffect(dep, effect: ReactiveEffect) {
 
 export function trackEffect(effect: ReactiveEffect, dep) {
   // 重新收集依赖 将不需要的移除
+  debugger
   if (dep.get(effect) !== effect._trackId) {
     // 更新id
     dep.set(effect, effect._trackId)
