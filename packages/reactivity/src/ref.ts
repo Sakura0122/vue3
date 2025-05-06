@@ -35,7 +35,7 @@ class RefImpl {
 
 export function trackRefValue(ref) {
   if (activeEffect) {
-    trackEffect(activeEffect, ref.dep = createDep(() => (ref.dep = undefined), 'undefined'))
+    trackEffect(activeEffect, ref.dep = ref.dep || createDep(() => (ref.dep = undefined), 'undefined'))
   }
 }
 
@@ -88,4 +88,8 @@ export function proxyRefs(objectWithRef: any) {
       return Reflect.set(target, key, value, receiver)
     }
   })
+}
+
+export function isRef(value) {
+  return !!(value && value.__v_isRef)
 }
