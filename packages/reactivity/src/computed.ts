@@ -1,11 +1,20 @@
 import { isFunction } from '@vue/shared'
 import { ReactiveEffect } from './effect'
 import { trackRefValue, triggerRefValue } from './ref'
+import { Dep } from './reactiveEffect'
 
-export function computed(getterOrOptions) {
+export type ComputedGetter<T> = (oldValue?: T) => T
+export type ComputedSetter<T> = (newValue: T) => void
+
+export interface WritableComputedOptions<T> {
+  get: ComputedGetter<T>
+  set: ComputedSetter<T>
+}
+
+export function computed<T>(getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>) {
   const isGetter = isFunction(getterOrOptions)
-  let getter
-  let setter
+  let getter: ComputedGetter<T>
+  let setter: ComputedSetter<T>
   if (isGetter) {
     getter = getterOrOptions
     setter = () => {
@@ -17,12 +26,12 @@ export function computed(getterOrOptions) {
   return new ComputedRefImpl(getter, setter)
 }
 
-class ComputedRefImpl {
-  public _value
-  public effect
-  public dep
+class ComputedRefImpl<T> {
+  public _value!: T
+  public effect: ReactiveEffect<T>
+  public dep?: Dep = undefined
 
-  constructor(getter, public setter) {
+  constructor(getter: ComputedGetter<T>, public setter: ComputedSetter<T>) {
     // 创建一个effect来管理当前计算属性的dirty
     this.effect = new ReactiveEffect(() => getter(this._value), () => {
       // 计算属性依赖的值变化了 应该重新触发渲染

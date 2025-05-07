@@ -1,8 +1,8 @@
 import { toReactive } from './reactive'
 import { activeEffect, trackEffect, triggerEffects } from './effect'
-import { createDep } from './reactiveEffect'
+import { createDep, Dep } from './reactiveEffect'
 
-export function ref(value: any) {
+export function ref<T>(value: T) {
   return createRef(value)
 }
 
@@ -10,12 +10,12 @@ function createRef(value: any) {
   return new RefImpl(value)
 }
 
-class RefImpl {
+class RefImpl<T> {
   public __v_isRef = true
-  public _value: any
-  public dep: any
+  public _value: T
+  public dep?: Dep = undefined
 
-  constructor(public rawValue: any) {
+  constructor(public rawValue: T) {
     this._value = toReactive(rawValue)
   }
 
@@ -33,23 +33,28 @@ class RefImpl {
   }
 }
 
-export function trackRefValue(ref) {
+type RefBase<T> = {
+  dep?: Dep
+  value: T
+}
+
+export function trackRefValue(ref: RefBase<any>) {
   if (activeEffect) {
     trackEffect(activeEffect, ref.dep = ref.dep || createDep(() => (ref.dep = undefined), 'undefined'))
   }
 }
 
-export function triggerRefValue(ref) {
+export function triggerRefValue(ref: RefBase<any>) {
   let dep = ref.dep
   if (dep) {
     triggerEffects(dep)
   }
 }
 
-class ObjectRefImpl {
+class ObjectRefImpl<T extends object, K extends keyof T> {
   public __v_isRef = true
 
-  constructor(public _object, public _key) {
+  constructor(public _object: T, public _key: K) {
   }
 
   get value() {
@@ -61,12 +66,12 @@ class ObjectRefImpl {
   }
 }
 
-export function toRef(object, key) {
+export function toRef<T extends object, K extends keyof T>(object: T, key: K) {
   return new ObjectRefImpl(object, key)
 }
 
-export function toRefs(object) {
-  const res = {}
+export function toRefs<T extends object>(object: T) {
+  const res: any = {}
   for (const key in object) {
     res[key] = toRef(object, key)
   }
@@ -76,8 +81,7 @@ export function toRefs(object) {
 export function proxyRefs(objectWithRef: any) {
   return new Proxy(objectWithRef, {
     get(target, key, receiver) {
-      const value = target[key]
-      return value.__v_isRef ? value.value : value
+      return unref(Reflect.get(target, key, receiver))
     },
     set(target, key, value, receiver) {
       const oldValue = target[key]
@@ -90,6 +94,10 @@ export function proxyRefs(objectWithRef: any) {
   })
 }
 
-export function isRef(value) {
+export function isRef(value: any) {
   return !!(value && value.__v_isRef)
+}
+
+export function unref<T>(ref: any): T {
+  return isRef(ref) ? ref.value : ref
 }

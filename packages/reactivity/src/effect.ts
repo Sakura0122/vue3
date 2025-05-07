@@ -1,6 +1,7 @@
 import { DirtyLevels } from './constants'
+import { Dep } from './reactiveEffect'
 
-export function effect<T = any>(fn: () => T, options?) {
+export function effect<T = any>(fn: () => T, options?: any) {
   // 创建一个响应式effect 数据变化后可以重新执行
 
   // 创建一个响应式effect 依赖的属性变化了就执行回调
@@ -36,7 +37,7 @@ function postCleanEffect(effect: ReactiveEffect) {
   }
 }
 
-export class ReactiveEffect {
+export class ReactiveEffect<T = any> {
   // 记录当前effect执行了几次
   _trackId = 0
   _depsLength = 0
@@ -50,7 +51,7 @@ export class ReactiveEffect {
    * @param fn 用户编写的函数
    * @param scheduler fn中依赖的数据发生变化后 重新调用run
    */
-  constructor(public fn: () => any, public scheduler) {
+  constructor(public fn: () => T, public scheduler: (...args: any[]) => any) {
   }
 
   public get dirty() {
@@ -82,6 +83,7 @@ export class ReactiveEffect {
       activeEffect = lastEffect
     }
   }
+
   stop() {
     if (this.active) {
       this.active = false
@@ -91,14 +93,14 @@ export class ReactiveEffect {
   }
 }
 
-function cleanDepEffect(dep, effect: ReactiveEffect) {
+function cleanDepEffect(dep: Dep, effect: ReactiveEffect) {
   dep.delete(effect)
   if (dep.size === 0) {
     dep.cleanup()
   }
 }
 
-export function trackEffect(effect: ReactiveEffect, dep) {
+export function trackEffect(effect: ReactiveEffect, dep: Dep) {
   // 重新收集依赖 将不需要的移除
   if (dep.get(effect) !== effect._trackId) {
     // 更新id

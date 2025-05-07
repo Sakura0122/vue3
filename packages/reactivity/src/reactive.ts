@@ -30,6 +30,6 @@ export function toReactive(value: any) {
   return isObject(value) ? reactive(value) : value
 }
 
-export function isReactive(value) {
+export function isReactive(value: unknown) {
   return !!(value && value[ReactiveFlags.IS_REACTIVE])
 }

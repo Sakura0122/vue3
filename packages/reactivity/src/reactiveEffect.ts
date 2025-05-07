@@ -1,9 +1,14 @@
-import { activeEffect, trackEffect, triggerEffects } from './effect'
+import { activeEffect, ReactiveEffect, trackEffect, triggerEffects } from './effect'
 
 const targetMap = new WeakMap()
 
+export type Dep = Map<ReactiveEffect, number> & {
+  cleanup: () => void
+  name: string | symbol
+}
+
 export const createDep = (cleanup: () => void, key: string | symbol) => {
-  const dep = new Map() as any
+  const dep = new Map() as Dep
   dep.cleanup = cleanup
   dep.name = key
   return dep

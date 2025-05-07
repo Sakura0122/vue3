@@ -3,15 +3,15 @@ import { isFunction, isObject } from '@vue/shared'
 import { isReactive } from './reactive'
 import { isRef } from './ref'
 
-export function watch(source, cb, options = {} as any) {
+export function watch(source: any, cb: any, options = {} as any) {
   return doWatch(source, cb, options)
 }
 
-export function watchEffect(effect, options = {} as any) {
+export function watchEffect(effect: any, options = {} as any) {
   return doWatch(effect, null, options)
 }
 
-function traverse(source, depth?: number, currentDepth = 0, seen = new Set()) {
+function traverse(source: any, depth?: number, currentDepth = 0, seen = new Set()) {
   if (!isObject(source)) {
     return source
   }
@@ -30,12 +30,12 @@ function traverse(source, depth?: number, currentDepth = 0, seen = new Set()) {
   return source
 }
 
-function doWatch(source, cb, { deep, immediate }) {
-  const reactiveGetter = (source) => traverse(source, deep === false ? 1 : undefined)
+function doWatch(source: any, cb: any, { deep, immediate }) {
+  const reactiveGetter = (source: any) => traverse(source, deep === false ? 1 : undefined)
 
   // 产生一个可以给ReactiveEffect来使用的getter 需要对这个对象进行取值操作 会关联当前的reactiveEffect
 
-  let getter
+  let getter: () => any
   if (isReactive(source)) {
     getter = () => reactiveGetter(source)
   } else if (isRef(source)) {
@@ -49,10 +49,10 @@ function doWatch(source, cb, { deep, immediate }) {
     getter = () => traverse(baseGetter())
   }
 
-  let oldValue
+  let oldValue: any
 
-  let clean
-  const onCleanup = (fn) => {
+  let clean: (() => void) | undefined
+  const onCleanup = (fn: () => void) => {
     clean = () => {
       fn()
       clean = null
