@@ -6,7 +6,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node scripts/dev.js reactivity -f esm"
+    "dev:reactivity": "node scripts/dev.js reactivity -f esm",
+    "dev:runtime-dom": "node scripts/dev.js runtime-dom -f esm"
   },
   "keywords": [],
   "author": "",
