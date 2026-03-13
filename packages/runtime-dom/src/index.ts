@@ -5,11 +5,12 @@ import { createRenderer } from '@vue/runtime-core'
 
 // 将节点操作和属性操作合并在一起
 const renderOptions = Object.assign({ patchProp }, nodeOps)
+const renderer = createRenderer(renderOptions)
 
 export { renderOptions }
 
 export const render = (vnode, container) => {
-  return createRenderer(renderOptions).render(vnode, container)
+  return renderer.render(vnode, container)
 }
 
 export * from '@vue/runtime-core'

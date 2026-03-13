@@ -2,22 +2,23 @@ export function patchEvent(el, name: string, nextValue) {
   const invokers = el._vei || (el._vei = {})
   const eventName = name.slice(2).toLowerCase()
 
-  const existingInvokers = invokers[name]
-  if (nextValue && existingInvokers) {
+  const existingInvoker = invokers[name]
+  if (nextValue && existingInvoker) {
     // 事件换绑
-    return (existingInvokers.value = nextValue)
+    existingInvoker.value = nextValue
+    return
   }
 
   if (nextValue) {
     const invoker = (invokers[name] = createInvoker(nextValue))
-    return el.addEventListener(eventName, invoker)
+    el.addEventListener(eventName, invoker)
+    return
   }
   // 现在没有 以前有
-  if (existingInvokers) {
-    el.removeEventListener(name, existingInvokers)
-    invokers[name] = null
+  if (existingInvoker) {
+    el.removeEventListener(eventName, existingInvoker)
+    delete invokers[name]
   }
-
 }
 
 function createInvoker(value) {

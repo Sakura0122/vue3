@@ -18,15 +18,20 @@ export const Teleport = {
       const target = n2.target = document.querySelector(n2.props.to)
       if (target) {
         const children = Array.isArray(n2.children) ? n2.children : [n2.children]
-        mountChildren(children, target, parentComponent)
+        mountChildren(children, target, null, parentComponent)
       }
     } else {
-      patchChildren(n1, n2, n2.target, parentComponent)
+      const target = (n2.target = n1.target)
+      patchChildren(n1, n2, target, null, parentComponent)
       if (n2.props.to !== n1.props.to) {
         const nextTarget = document.querySelector(n2.props.to)
-        n2.children.forEach(child => {
-          move(child, nextTarget, anchor)
-        })
+        if (nextTarget) {
+          const children = Array.isArray(n2.children) ? n2.children : [n2.children]
+          children.forEach(child => {
+            move(child, nextTarget, anchor)
+          })
+          n2.target = nextTarget
+        }
       }
     }
   }

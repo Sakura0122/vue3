@@ -114,7 +114,7 @@ export function setupComponent(instance) {
       },
       emit(event, ...payload) {
         const eventName = `on${event[0].toUpperCase() + event.slice(1)}`
-        const handler = instance.vnode.props[eventName]
+        const handler = instance.vnode.props?.[eventName]
         handler && handler(...payload)
       }
     }
@@ -123,7 +123,7 @@ export function setupComponent(instance) {
     unSetCurrentInstance()
     if (isFunction(setupResult)) {
       instance.render = setupResult
-    } else {
+    } else if (setupResult && typeof setupResult === 'object') {
       instance.setupState = proxyRefs(setupResult)
     }
   }

@@ -1,4 +1,4 @@
-import { isNumber, isString, PatchFlags, ShapeFlags } from '@vue/shared'
+import { hasOwn, isNumber, isString, PatchFlags, ShapeFlags } from '@vue/shared'
 import { createVNode, Fragment, isSameVNodeType, Text } from './vnode'
 import { getSequence } from './seq'
 import { isRef, ReactiveEffect } from '@vue/reactivity'
@@ -53,7 +53,7 @@ export function createRenderer(renderOptions) {
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       hostSetElementText(el, children)
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-      mountChildren(children, el, anchor, parentComponent)
+      mountChildren(children, el, null, parentComponent)
     }
 
     if (transition) {
@@ -113,7 +113,7 @@ export function createRenderer(renderOptions) {
       const n2 = c2[i]
       if (isSameVNodeType(n1, n2)) {
         // 更新当前节点属性和儿子（递归比较）
-        patch(n1, n2, el)
+        patch(n1, n2, el, null, parentComponent)
       } else {
         break
       }
@@ -126,7 +126,7 @@ export function createRenderer(renderOptions) {
       const n2 = c2[e2]
       if (isSameVNodeType(n1, n2)) {
         // 递归比较
-        patch(n1, n2, el)
+        patch(n1, n2, el, null, parentComponent)
       } else {
         break
       }
@@ -146,7 +146,7 @@ export function createRenderer(renderOptions) {
         const nextPos = e2 + 1
         const anchor = c2[nextPos]?.el
         while (i <= e2) {
-          patch(null, c2[i], el, anchor)
+          patch(null, c2[i], el, anchor, parentComponent)
           i++
         }
       }
@@ -190,7 +190,7 @@ export function createRenderer(renderOptions) {
           // 比较前后节点的差异 更新属性和儿子
           // 为了保证0是没有比对过的元素 直接i+1
           newIndexToOldIndexMap[newIndex - s2] = i + 1
-          patch(vnode, c2[newIndex], el)
+          patch(vnode, c2[newIndex], el, null, parentComponent)
         }
       }
       // 调整顺序
@@ -207,7 +207,7 @@ export function createRenderer(renderOptions) {
 
         // 列表中新增的元素
         if (!vnode.el) {
-          patch(null, vnode, el, anchor)
+          patch(null, vnode, el, anchor, parentComponent)
         } else {
           if (i === increasingSeq[j]) {
             // diff算法优化
@@ -270,7 +270,7 @@ export function createRenderer(renderOptions) {
         }
         // 6.老的是文本，新的是数组，挂载
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          mountChildren(c2, el, anchor, parentComponent)
+          mountChildren(c2, el, null, parentComponent)
         }
       }
     }
@@ -295,31 +295,38 @@ export function createRenderer(renderOptions) {
       if (patchFlag & PatchFlags.TEXT) {
         // 只要文本是动态的只比较文本
         if (n1.children !== n2.children) {
-          return hostSetElementText(el, n2.children)
+          hostSetElementText(el, n2.children)
         }
       }
       if (patchFlag & PatchFlags.CLASS) {
+        hostPatchProp(el, 'class', oldProps.class, newProps.class)
       }
       if (patchFlag & PatchFlags.STYLE) {
+        hostPatchProp(el, 'style', oldProps.style, newProps.style)
+      }
+      if (patchFlag & PatchFlags.PROPS) {
+        patchProps(oldProps, newProps, el)
+      }
+      if (patchFlag & PatchFlags.FULL_PROPS) {
+        patchProps(oldProps, newProps, el)
       }
     } else {
       // 对比所有属性
       patchProps(oldProps, newProps, el)
     }
 
-    if(dynamicChildren){
+    if (dynamicChildren) {
       // 线性比对
       patchBlockChildren(n1, n2, el, anchor, parentComponent)
-    }else {
+    } else {
       // 全量diff
       patchChildren(n1, n2, el, anchor, parentComponent)
     }
-
   }
 
-  const processText = (n1, n2, container) => {
+  const processText = (n1, n2, container, anchor) => {
     if (n1 === null) {
-      hostInsert((n2.el = hostCreateText(n2.children)), container)
+      hostInsert((n2.el = hostCreateText(n2.children)), container, anchor)
     } else {
       const el = (n2.el = n1.el)
       if (n1.children !== n2.children) {
@@ -339,8 +346,8 @@ export function createRenderer(renderOptions) {
   const updateComponentPreRender = (instance, next) => {
     instance.next = null
     instance.vnode = next
-    updateProps(instance, instance.props, next.props || {})
-    Object.assign(instance.slots, next.children)
+    updateProps(instance, next.props || {})
+    updateSlots(instance, next)
   }
 
   function renderComponent(instance) {
@@ -384,7 +391,7 @@ export function createRenderer(renderOptions) {
         if (bu) {
           invokeArrayFns(bu)
         }
-        const subTree = render.call(instance.proxy, instance.proxy)
+        const subTree = renderComponent(instance)
         patch(instance.subTree, subTree, container, anchor, instance)
         instance.subTree = subTree
 
@@ -429,6 +436,9 @@ export function createRenderer(renderOptions) {
   }
 
   const hasPropsChange = (oldProps, newProps) => {
+    oldProps = oldProps || {}
+    newProps = newProps || {}
+
     if (Object.keys(oldProps).length !== Object.keys(newProps).length) {
       return true
     }
@@ -442,17 +452,42 @@ export function createRenderer(renderOptions) {
     return false
   }
 
-  const updateProps = (instance, oldProps, newProps) => {
-    if (hasPropsChange(oldProps, newProps)) {
-      for (const key in newProps) {
-        instance.props[key] = newProps[key]
-      }
-      for (const key in instance.props) {
-        if (!(key in newProps)) {
-          delete instance.props[key]
-        }
+  const assignUpdate = (target, source) => {
+    for (const key in source) {
+      target[key] = source[key]
+    }
+    for (const key in target) {
+      if (!hasOwn(source, key)) {
+        delete target[key]
       }
     }
+  }
+
+  const updateProps = (instance, rawProps) => {
+    const props = {}
+    const attrs = {}
+    const propsOptions = instance.propsOptions || {}
+
+    for (const key in rawProps) {
+      const value = rawProps[key]
+      if (hasOwn(propsOptions, key)) {
+        props[key] = value
+      } else {
+        attrs[key] = value
+      }
+    }
+
+    if (hasPropsChange(instance.props, props)) {
+      assignUpdate(instance.props, props)
+    }
+    if (hasPropsChange(instance.attrs, attrs)) {
+      assignUpdate(instance.attrs, attrs)
+    }
+  }
+
+  const updateSlots = (instance, vnode) => {
+    const nextSlots = vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN ? vnode.children : {}
+    assignUpdate(instance.slots, nextSlots)
   }
 
   const shouldComponentUpdate = (n1, n2) => {
@@ -509,7 +544,7 @@ export function createRenderer(renderOptions) {
     const { type, shapeFlag, ref } = n2
     switch (type) {
       case Text:
-        processText(n1, n2, container)
+        processText(n1, n2, container, anchor)
         break
       case Fragment:
         processFragment(n1, n2, container, anchor, parentComponent)
@@ -531,17 +566,25 @@ export function createRenderer(renderOptions) {
         }
     }
 
+    if (n1 && n1.ref !== ref) {
+      setRef(n1.ref, null)
+    }
+
     if (ref != null) {
       // 是dom 还是组件 还是组件有expose
       setRef(ref, n2)
     }
-
   }
 
   const setRef = (rawRef, vnode) => {
-    const value = vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
-      ? vnode.component.exposed || vnode.component.proxy
-      : vnode.el
+    if (rawRef == null) {
+      return
+    }
+    const value = vnode
+      ? vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+        ? vnode.component?.exposed || vnode.component?.proxy
+        : vnode.el
+      : null
     if (isRef(rawRef)) {
       rawRef.value = value
     }
@@ -550,6 +593,9 @@ export function createRenderer(renderOptions) {
   // 卸载操作
   const unmount = (vnode, parentComponent) => {
     const { shapeFlag, transition, el } = vnode
+    if (vnode.ref != null) {
+      setRef(vnode.ref, null)
+    }
     const performRemove = () => {
       hostRemove(vnode.el)
     }
@@ -588,6 +634,7 @@ export function createRenderer(renderOptions) {
       if (container._vnode) {
         unmount(container._vnode, null)
       }
+      container._vnode = null
     } else {
       // 将虚拟节点渲染成真实dom
       patch(container._vnode || null, vnode, container)

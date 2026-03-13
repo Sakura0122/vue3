@@ -23,7 +23,7 @@ export function createVNode(type, props, children?, patchFlag?) {
           : 0
 
   const vnode = {
-    __v_isVnode: true,
+    __v_isVNode: true,
     type,
     props,
     children,
