@@ -56,7 +56,7 @@ runtime-dom → runtime-core → reactivity → shared
 | `component.ts` | 组件实例创建、`setup()` 执行、Props/Attrs 分离、Slots 初始化、实例代理（`proxy`）、`emit`、`expose` |
 | `apiLifecycle.ts` | 生命周期钩子：`onBeforeMount`、`onMounted`、`onBeforeUpdate`、`onUpdated`、`onBeforeUnmount`、`onUnmounted` |
 | `apiInject.ts` | `provide()` / `inject()` — 基于原型链的依赖注入 |
-| `scheduler.ts` | 异步调度器 `queueJob()` — 合并组件更新 |
+| `scheduler.ts` | 异步调度器 `queueJob()` / `nextTick()` — 合并组件更新并支持在下一个刷新周期后执行回调 |
 | `seq.ts` | 最长递增子序列算法 `getSequence()` — Diff 算法核心优化 |
 | `defineAsyncComponent.ts` | `defineAsyncComponent()` — 异步组件定义 |
 | `enums.ts` | `LifecycleHooks` 等枚举定义 |
@@ -108,6 +108,7 @@ runtime-dom → runtime-core → reactivity → shared
 - ✅ 完整生命周期钩子
 - ✅ `provide` / `inject` 依赖注入
 - ✅ 异步调度器（批量更新）
+- ✅ `nextTick()` 异步刷新时机 API
 - ✅ 内置组件：`Teleport`、`Transition`、`KeepAlive`
 - ✅ `defineAsyncComponent` 异步组件
 - ✅ `ref` 模板引用
